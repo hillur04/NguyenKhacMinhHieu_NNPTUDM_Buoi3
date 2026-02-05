@@ -205,6 +205,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 		
 		setDetailReadonly(true);
 		saveDetail.style.display = 'none';
+		// ensure edit button shows correct label when opening a product
+		if (editToggle) editToggle.textContent = '✏️ Edit';
 		detailModal.show();
 	}
 
@@ -260,6 +262,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 			applyFiltersAndRender();
 			detailModal.hide();
 			editMode = false;
+			if (editToggle) editToggle.textContent = '✏️ Edit';
 			alert('Updated successfully!');
 		}catch(err){
 			console.error('Update error:', err);
@@ -268,5 +271,86 @@ document.addEventListener('DOMContentLoaded', ()=>{
 	});
 
 	fetchProducts();
+
+	// Reset edit state when modal is closed to avoid stale UI state
+	const detailModalEl = document.getElementById('detailModal');
+	if (detailModalEl){
+		detailModalEl.addEventListener('hidden.bs.modal', ()=>{
+			editMode = false;
+			setDetailReadonly(true);
+			saveDetail.style.display = 'none';
+			if (editToggle) editToggle.textContent = '✏️ Edit';
+		});
+	}
+
+	// Create modal (rewritten)
+	const createModalNewEl = document.getElementById('createModalNew');
+	const createModalNew = createModalNewEl ? new bootstrap.Modal(createModalNewEl) : null;
+	const newCreateSubmit = document.getElementById('newCreateSubmit');
+	const newCreateImageInput = document.getElementById('newCreateImage');
+	const newCreateError = document.getElementById('newCreateError');
+
+	function prepareNewCreate(){
+		// compute max id + 1
+		let maxId = 0;
+		products.forEach(p=>{ if (p && p.id && Number(p.id) > maxId) maxId = Number(p.id); });
+		const newId = maxId + 1;
+		document.getElementById('newCreateIdDisplay').value = newId;
+		document.getElementById('newCreateTitle').value = '';
+		document.getElementById('newCreateImage').value = '';
+		document.getElementById('newCreateImagePreview').innerHTML = '';
+		document.getElementById('newCreateCategoryId').value = '';
+		document.getElementById('newCreateDescription').value = '';
+		document.getElementById('newCreatePrice').value = '';
+		if (newCreateError){ newCreateError.style.display = 'none'; newCreateError.innerText = ''; }
+	}
+
+	if (createModalNewEl){
+		createModalNewEl.addEventListener('show.bs.modal', ()=>{
+			prepareNewCreate();
+		});
+	}
+
+	if (newCreateImageInput){
+		newCreateImageInput.addEventListener('input', ()=>{
+			const url = (newCreateImageInput.value || '').trim();
+			const prev = document.getElementById('newCreateImagePreview');
+			prev.innerHTML = '';
+			if (url){
+				const img = document.createElement('img');
+				img.src = url;
+				img.style.cssText = 'width:100px;height:100px;object-fit:cover;border-radius:6px';
+				prev.appendChild(img);
+			}
+		});
+	}
+
+	if (newCreateSubmit){
+		newCreateSubmit.addEventListener('click', async ()=>{
+			const id = Number(document.getElementById('newCreateIdDisplay').value);
+			const title = (document.getElementById('newCreateTitle').value || '').trim();
+			const image = (document.getElementById('newCreateImage').value || '').trim();
+			const categoryId = Number(document.getElementById('newCreateCategoryId').value) || 1;
+			const description = (document.getElementById('newCreateDescription').value || '').trim();
+			const price = Number(document.getElementById('newCreatePrice').value) || 0;
+			if (!title){ if (newCreateError){ newCreateError.style.display='block'; newCreateError.className='alert alert-danger'; newCreateError.innerText='Title is required'; } else alert('Title is required'); return; }
+			const payload = { id, title, price, description, categoryId, images: image ? [image] : [] };
+			try{
+				const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+				const text = await res.text();
+				console.log('Create response status:', res.status);
+				console.log('Create response body:', text);
+				if (!res.ok){ let msg = text; try{ const j = JSON.parse(text); msg = j.message || JSON.stringify(j); }catch(e){} if (newCreateError){ newCreateError.style.display='block'; newCreateError.className='alert alert-danger'; newCreateError.innerText = `Create failed: HTTP ${res.status} — ${msg}`; } throw new Error(`HTTP ${res.status}: ${msg}`); }
+				const created = JSON.parse(text);
+				// if API doesn't return the same id, ensure local object has id
+				if (!created.id) created.id = id;
+				products.unshift(created);
+				applyFiltersAndRender();
+				if (createModalNew) createModalNew.hide();
+				alert('Created successfully!');
+			}catch(err){ console.error('Create error:', err); if (!newCreateError) alert('Create failed: '+err.message); }
+		});
+	}
+
 });
 
