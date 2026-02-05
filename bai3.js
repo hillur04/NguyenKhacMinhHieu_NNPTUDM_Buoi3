@@ -1,3 +1,4 @@
+
 const API_URL = 'https://api.escuelajs.co/api/v1/products';
 
 function escapeHtml(s){ if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
