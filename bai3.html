@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root{
+            --bg: #ffffff;
+            --card: #ffffff;
+            --accent: #000000; /* black */
+            --accent-2: #222222;
+            --muted-text: #666666;
+            --text: #000000;
+        }
+        body{background: linear-gradient(180deg,var(--bg),#f7f7f7); color:var(--text);}
+        .card-dash{ background: linear-gradient(180deg,var(--card), #ffffff); border:1px solid rgba(0,0,0,0.06); }
+        .thumb{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid rgba(0,0,0,0.06); }
+        .table thead th{ background: linear-gradient(90deg,var(--accent),var(--accent-2)); color:#fff; font-weight:600; }
+        .table tbody tr{ background: transparent; border-bottom:1px solid rgba(0,0,0,0.04); }
+        .table.table-striped>tbody>tr:nth-of-type(odd){ background-color: rgba(0,0,0,0.02); }
+        .table-hover tbody tr:hover{ background-color: rgba(0,0,0,0.04); }
+        .badge-category{ background: rgba(0,0,0,0.06); color: var(--text); border-radius:0.5rem; padding:.35rem .5rem; font-weight:600; }
+        .card-header .btn{ background: linear-gradient(90deg,var(--accent),var(--accent-2)); color:#fff; border:0; }
+        .controls .form-control, .controls .form-select{ background:#ffffff; color:var(--muted-text); border:1px solid rgba(0,0,0,0.06); }
+        .page-link{ background:transparent; color:var(--accent-2); border:1px solid rgba(0,0,0,0.06); }
+        .page-item.active .page-link{ background:var(--accent-2); color:#fff; border-color:var(--accent-2); }
+        
+        /* Sort & Export buttons */
+        .btn-sort {
+            padding: 0.3rem 0.7rem;
+            margin-left: 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            display: inline-block;
+        }
+        .btn-sort:hover {
+            background: rgba(255,255,255,0.35);
+            border-color: rgba(255,255,255,0.6);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+        .btn-sort:active {
+            background: rgba(255,255,255,0.5);
+            transform: translateY(0);
+        }
+        
+        .btn-export {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #000, #222);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        .btn-export:hover {
+            background: linear-gradient(135deg, #222, #333);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            transform: translateY(-2px);
+        }
+        .btn-export:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <div class="card card-dash shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0" style="color:var(--accent-2)">Products Của Minh Hiếu</h4>
+                <div class="d-flex gap-2" style="align-items:center">
+                    <input id="searchInput" class="form-control form-control-sm" placeholder="Tìm theo title..." style="min-width:200px" />
+                    <select id="pageSizeSelect" class="form-select form-select-sm" style="width:110px">
+                        <option value="5">5 / page</option>
+                        <option value="10" selected>10 / page</option>
+                        <option value="20">20 / page</option>
+                    </select>
+                    <button id="exportCsv" class="btn-export">📥 Export CSV</button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Title <button id="sortTitle" class="btn-sort">↑↓ Sort</button></th>
+                                <th scope="col">Price <button id="sortPrice" class="btn-sort">↑↓ Sort</button></th>
+                                <th scope="col">Category</th>
+                                <th scope="col">Images</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-tbody">
+                            <!-- rows injected by bai3.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-end">
+                <nav><ul class="pagination mb-0" id="pagination"></ul></nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title" id="detailModalLabel">Product Details</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="detailForm">
+              <input type="hidden" id="detailId" />
+              <div class="mb-3">
+                <label class="form-label">ID</label>
+                <input id="detailIdDisplay" class="form-control" readonly />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input id="detailTitle" class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Price</label>
+                <input id="detailPrice" type="number" step="0.01" class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Category ID</label>
+                <input id="detailCategoryId" type="number" class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea id="detailDescription" class="form-control" rows="4"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Images (comma separated URLs)</label>
+                <input id="detailImagesInput" class="form-control" placeholder="https://..., https://..." />
+                <div class="mt-2" id="detailImagesPreview"></div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button id="editToggle" type="button" class="btn btn-primary">✏️ Edit</button>
+            <button id="saveDetail" type="button" class="btn btn-success" style="display:none">💾 Save</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="bai3.js"></script>
+</body>
+</html>
